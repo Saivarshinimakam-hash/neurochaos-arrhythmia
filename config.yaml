@@ -1,0 +1,290 @@
+# ============================================================
+# NeuroChaos Arrhythmia Detection — Master Configuration
+# All experiment parameters are controlled from here.
+# Do NOT hard-code paths or hyperparameters in source files.
+# ============================================================
+
+# ── Reproducibility ─────────────────────────────────────────
+seed: 42
+
+# ── Dataset ─────────────────────────────────────────────────
+dataset:
+  name: "MIT-BIH Arrhythmia Database"
+  source: "PhysioNet"
+  version: "1.0.0"
+  url: "https://physionet.org/content/mitdb/1.0.0/"
+  # wfdb will download here if the directory is empty.
+  # Set to an absolute path if you have a local copy.
+  raw_dir: "data/raw/mitdb"
+  processed_dir: "data/processed"
+  features_dir: "data/features"
+
+  # Sampling frequency of the MIT-BIH records (360 Hz — do not change).
+  fs: 360
+
+  # Lead to use for single-channel experiments.
+  # MIT-BIH has two channels: MLII (index 0) and V1/V5 (index 1).
+  lead: 0   # MLII
+
+  # All 48 record IDs in MIT-BIH (records 102, 104, 107, 217 have paced beats).
+  all_records:
+    - 100
+    - 101
+    - 102
+    - 103
+    - 104
+    - 105
+    - 106
+    - 107
+    - 108
+    - 109
+    - 111
+    - 112
+    - 113
+    - 114
+    - 115
+    - 116
+    - 117
+    - 118
+    - 119
+    - 121
+    - 122
+    - 123
+    - 124
+    - 200
+    - 201
+    - 202
+    - 203
+    - 205
+    - 207
+    - 208
+    - 209
+    - 210
+    - 212
+    - 213
+    - 214
+    - 215
+    - 217
+    - 219
+    - 220
+    - 221
+    - 222
+    - 223
+    - 228
+    - 230
+    - 231
+    - 232
+    - 233
+    - 234
+
+  # Patient/record-wise split — prevents data leakage.
+  # Each record is treated as a single patient.
+  # Proportions: 70 % train / 15 % val / 15 % test (record-level).
+  train_records:
+    - 101
+    - 106
+    - 108
+    - 109
+    - 112
+    - 114
+    - 115
+    - 116
+    - 118
+    - 119
+    - 122
+    - 124
+    - 201
+    - 203
+    - 205
+    - 207
+    - 208
+    - 209
+    - 210
+    - 212
+    - 213
+    - 214
+    - 215
+    - 219
+    - 220
+    - 221
+    - 222
+    - 223
+    - 228
+    - 230
+    - 231
+    - 233
+    - 234
+  val_records:
+    - 100
+    - 103
+    - 105
+    - 111
+    - 113
+    - 117
+    - 121
+    - 200
+    - 202
+  test_records:
+    - 102
+    - 104
+    - 107
+    - 123
+    - 217
+    - 232
+
+# ── AAMI 5-class annotation mapping ─────────────────────────
+# Reference: ANSI/AAMI EC57:2012 standard.
+# Beat symbols used in wfdb annotation files.
+aami_mapping:
+  N:   # Normal and near-normal beats
+    - "N"   # Normal beat
+    - "L"   # Left bundle branch block beat
+    - "R"   # Right bundle branch block beat
+    - "e"   # Atrial escape beat
+    - "j"   # Nodal (junctional) escape beat
+  S:   # Supraventricular ectopic beats
+    - "A"   # Atrial premature beat
+    - "a"   # Aberrated atrial premature beat
+    - "J"   # Nodal (junctional) premature beat
+    - "S"   # Supraventricular premature beat
+  V:   # Ventricular ectopic beats
+    - "V"   # Premature ventricular contraction
+    - "E"   # Ventricular escape beat
+  F:   # Fusion beats
+    - "F"   # Fusion of ventricular and normal beat
+  Q:   # Unknown / paced / unclassifiable
+    - "/"   # Paced beat
+    - "f"   # Fusion of paced and normal beat
+    - "Q"   # Unclassifiable beat
+
+# Class index mapping (used for model outputs)
+class_labels:
+  N: 0
+  S: 1
+  V: 2
+  F: 3
+  Q: 4
+
+# ── Preprocessing ────────────────────────────────────────────
+preprocessing:
+  # Butterworth band-pass filter
+  bandpass:
+    lowcut: 0.5    # Hz
+    highcut: 40.0  # Hz
+    order: 4       # filter order (4 is numerically stable for ECG)
+
+  # Per-beat normalisation strategy: "zscore" or "minmax"
+  normalization: "zscore"
+
+  # Beat segmentation window around R-peak (in samples at 360 Hz)
+  # 0.3 s before + 0.5 s after = 288 samples total
+  beat_before_samples: 108   # 0.3 s × 360 Hz
+  beat_after_samples: 180    # 0.5 s × 360 Hz
+  beat_window_size: 288      # total samples per beat
+
+# ── NeuroChaos feature extraction ───────────────────────────
+neurochaos:
+  # Sample Entropy
+  sample_entropy:
+    m: 2          # embedding dimension
+    r_factor: 0.2 # tolerance = r_factor × std(signal)
+
+  # Permutation Entropy
+  permutation_entropy:
+    order: 3      # embedding dimension
+    delay: 1      # time delay
+
+  # Approximate Entropy
+  approximate_entropy:
+    m: 2
+    r_factor: 0.2
+
+  # Recurrence Quantification Analysis
+  rqa:
+    dimension: 3    # embedding dimension
+    time_delay: 1
+    threshold: 0.1  # recurrence threshold (fraction of max distance)
+
+  # Lyapunov exponent (nolds)
+  lyapunov:
+    emb_dim: 3
+
+  # Phase space
+  phase_space:
+    emb_dim: 3
+    time_delay: 1
+
+  # Fractal / complexity
+  fractal:
+    dfa_order: 1   # DFA polynomial order
+
+# ── Classical ML ─────────────────────────────────────────────
+classical_ml:
+  logistic_regression:
+    max_iter: 1000
+    C: 1.0
+    solver: "lbfgs"
+    multi_class: "multinomial"
+  random_forest:
+    n_estimators: 200
+    max_depth: null   # grow full trees
+    n_jobs: -1
+  svm:
+    C: 1.0
+    kernel: "rbf"
+    gamma: "scale"
+    probability: true  # needed for ROC-AUC
+
+# ── 1D CNN ───────────────────────────────────────────────────
+cnn:
+  filters: [32, 64, 128]
+  kernel_size: 5
+  pool_size: 2
+  dropout: 0.3
+  dense_units: 128
+  batch_size: 128
+  epochs: 50
+  learning_rate: 0.001
+  early_stopping_patience: 10
+
+# ── Bi-LSTM ──────────────────────────────────────────────────
+bilstm:
+  units: [64, 64]
+  dropout: 0.3
+  recurrent_dropout: 0.2
+  dense_units: 64
+  batch_size: 128
+  epochs: 50
+  learning_rate: 0.001
+  early_stopping_patience: 10
+
+# ── Hybrid model ─────────────────────────────────────────────
+hybrid:
+  neural_backbone: "cnn"   # "cnn" or "bilstm"
+  embedding_dim: 64        # neural branch output size
+  mlp_hidden_units: [128, 64]
+  dropout: 0.3
+  batch_size: 128
+  epochs: 50
+  learning_rate: 0.001
+  early_stopping_patience: 10
+
+# ── Output directories ───────────────────────────────────────
+output:
+  models_dir: "models"
+  results_dir: "results"
+  cache_dir: "data/cache"
+  confusion_matrices_dir: "results/confusion_matrices"
+  figures_dir: "results/figures"
+  metrics_dir: "results/metrics"
+  experiments_dir: "results/experiments"
+  logs_dir: "results/logs"
+
+# ── Robustness experiment ────────────────────────────────────
+robustness:
+  noise_levels:
+    clean:  0.0
+    low:    0.05   # SNR ~26 dB
+    medium: 0.15   # SNR ~16 dB
+    high:   0.30   # SNR ~10 dB
+  noise_type: "gaussian"  # additive white Gaussian noise

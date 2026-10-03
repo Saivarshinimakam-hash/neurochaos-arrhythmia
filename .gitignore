@@ -1,0 +1,48 @@
+Get-Content .gitignore# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Virtual environment
+.venv/
+venv/
+env/
+
+# Testing / tooling
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# ECG dataset and generated cache
+data/raw/
+data/cache/
+*.npz
+
+# Trained models / checkpoints
+models/
+*.keras
+*.h5
+*.joblib
+*_backup/
+
+# Generated experiment outputs
+results/
+resulrs/
+
+# Temporary experiment scripts / local files
+*.log
+*.tmp
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Local Streamlit
+.streamlit/secrets.toml
